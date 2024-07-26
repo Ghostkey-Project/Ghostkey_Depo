@@ -151,7 +151,7 @@ func uploadFile(c *gin.Context) {
 
     uniqueID := getNextID()
     fileName := fmt.Sprintf("%d-%s", uniqueID, header.Filename)
-    outputDir := "cargo_files"
+    outputDir := "storage"
     if _, err := os.Stat(outputDir); os.IsNotExist(err) {
         err := os.Mkdir(outputDir, 0755)
         if err != nil {
