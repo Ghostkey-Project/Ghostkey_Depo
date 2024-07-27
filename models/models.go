@@ -1,5 +1,5 @@
-// models.go
-package main
+// models/models.go
+package models
 
 import (
     "gorm.io/gorm"
@@ -40,4 +40,5 @@ type FileMetadata struct {
     EspID              string
     DeliveryKey        string
     EncryptionPassword string
+    ReviewStatus       string
 }

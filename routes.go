@@ -10,6 +10,7 @@ import (
     "sync"
     "github.com/gin-contrib/sessions"
     "github.com/gin-gonic/gin"
+    "Ghostkey_Depo/models" // Update to the correct import path
 )
 
 func registerRoutes(r *gin.Engine) {
@@ -42,13 +43,13 @@ func registerUser(c *gin.Context) {
         return
     }
 
-    var user User
+    var user models.User
     if err := db.Where("username = ?", username).First(&user).Error; err == nil {
         c.JSON(http.StatusBadRequest, gin.H{"message": "Username already exists"})
         return
     }
 
-    newUser := User{Username: username}
+    newUser := models.User{Username: username}
     if err := newUser.SetPassword(password); err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to set password"})
         return
@@ -70,7 +71,7 @@ func login(c *gin.Context) {
         return
     }
 
-    var user User
+    var user models.User
     if err := db.Where("username = ?", username).First(&user).Error; err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid username or password"})
         return
@@ -105,13 +106,13 @@ func registerDevice(c *gin.Context) {
         return
     }
 
-    var device ESPDevice
+    var device models.ESPDevice
     if err := db.Where("esp_id = ?", espID).First(&device).Error; err == nil {
         c.JSON(http.StatusBadRequest, gin.H{"message": "ESP ID already exists"})
         return
     }
 
-    newDevice := ESPDevice{EspID: espID, EspSecretKey: espSecretKey}
+    newDevice := models.ESPDevice{EspID: espID, EspSecretKey: espSecretKey}
     if err := db.Create(&newDevice).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to register ESP32"})
         return
@@ -173,7 +174,7 @@ func uploadFile(c *gin.Context) {
         return
     }
 
-    fileMetadata := FileMetadata{
+    fileMetadata := models.FileMetadata{
         FileName:           fileName,
         OriginalFileName:   header.Filename,
         FilePath:           outputPath,
@@ -192,7 +193,7 @@ func uploadFile(c *gin.Context) {
 func getFile(c *gin.Context) {
     fileName := c.Param("fileName")
 
-    var fileMetadata FileMetadata
+    var fileMetadata models.FileMetadata
     if err := db.Where("file_name = ?", fileName).First(&fileMetadata).Error; err != nil {
         c.JSON(http.StatusNotFound, gin.H{"message": "File not found"})
         return
