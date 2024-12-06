@@ -1,8 +1,0 @@
-instance/
-__pycache__/
-*.db
-cookies.txt
-test/registered_boards.json
-database.db-journal
-storage/** */
-storage/2-node1-2317-README.md

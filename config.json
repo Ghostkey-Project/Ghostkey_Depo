@@ -1,0 +1,12 @@
+{
+    "server_port": "6000",
+    "storage_path": "./storage",
+    "analysis_params": {
+        "max_file_size": "100MB",
+        "allowed_extensions": ".txt,.pdf,.doc,.docx",
+        "scan_timeout": "300",
+        "content_check": "true",
+        "virus_scan": "true",
+        "metadata_extraction": "true"
+    }
+} 

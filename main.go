@@ -1,60 +1,72 @@
-// main.go
 package main
 
 import (
-    "log"
-    "os"
-    "time"
-    "github.com/gin-contrib/sessions"
-    "github.com/gin-contrib/sessions/cookie"
-    "github.com/gin-gonic/gin"
-    "gorm.io/driver/sqlite"
-    "gorm.io/gorm"
-    "Ghostkey_Depo/models"         // Update to the correct import path
-    "Ghostkey_Depo/workers/reviewer" // Update to the correct import path
+	"encoding/json"
+	"log"
+	"os"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
-var db *gorm.DB
-
-func initDB() {
-    var err error
-    db, err = gorm.Open(sqlite.Open("depo.db"), &gorm.Config{})
-    if err != nil {
-        log.Fatal("failed to connect database")
-    }
-
-    // Migrate the schema
-    db.AutoMigrate(&models.User{}, &models.ESPDevice{}, &models.FileMetadata{})
+// Config holds the server configuration
+type Config struct {
+	ServerPort     string            `json:"server_port"`
+	StoragePath    string            `json:"storage_path"`
+	AnalysisParams map[string]string `json:"analysis_params"`
 }
+
+var (
+	db     *gorm.DB
+	config Config
+)
 
 func main() {
-    initDB()
+	// Load configuration
+	if err := loadConfig(); err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
-    r := gin.Default()
+	// Initialize database
+	var err error
+	db, err = gorm.Open(sqlite.Open("storage.db"), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
 
-    // Set up session store
-    store := cookie.NewStore([]byte(os.Getenv("SECRET_KEY")))
-    r.Use(sessions.Sessions("mysession", store))
+	// Auto-migrate the database schema
+	if err := db.AutoMigrate(&StoredFile{}, &AnalysisResult{}); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
+	}
 
-    // Register routes
-    registerRoutes(r)
+	// Create storage directory if it doesn't exist
+	if err := os.MkdirAll(config.StoragePath, 0755); err != nil {
+		log.Fatalf("Failed to create storage directory: %v", err)
+	}
 
-    // Toggle file review process
-    if os.Getenv("ENABLE_REVIEWER") == "true" {
-        go startReviewer()
-    }
+	// Initialize router
+	r := gin.Default()
+	setupRoutes(r)
 
-    r.Run(":6000") // listen and serve on 0.0.0.0:6000
+	// Start server
+	if err := r.Run(":" + config.ServerPort); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }
 
-func startReviewer() {
-    ticker := time.NewTicker(1 * time.Hour) // Adjust the interval as needed
-    defer ticker.Stop()
+func loadConfig() error {
+	configFile, err := os.Open("config.json")
+	if err != nil {
+		return err
+	}
+	defer configFile.Close()
 
-    for {
-        select {
-        case <-ticker.C:
-            reviewer.ReviewFiles(db)
-        }
-    }
+	return json.NewDecoder(configFile).Decode(&config)
 }
+
+func setupRoutes(r *gin.Engine) {
+	r.POST("/upload_file", handleFileUpload)
+	r.GET("/analysis/:file_id", getAnalysisResult)
+	r.GET("/files", listFiles)
+} 
