@@ -179,11 +179,37 @@ func analyzeFile(file StoredFile) {
 
 // performAnalysis implements the actual file analysis logic based on parameters
 func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interface{}, error) {
+	// Get file info for metadata
+	fileInfo, err := os.Stat(file.FilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file info: %v", err)
+	}
+
+	// Get file extension
+	fileExt := strings.ToLower(filepath.Ext(file.FileName))
+
+	// Create structured results
 	results := map[string]interface{}{
-		"file_name": file.FileName,
-		"file_size": file.FileSize,
-		"esp_id":    file.EspID,
-		"content_matches": make(map[string][]string),
+		"basic_info": map[string]interface{}{
+			"name": file.FileName,
+			"collection_date": file.UploadTime.Format(time.RFC3339),
+			"file_type": fileExt,
+			"size": map[string]interface{}{
+				"bytes": file.FileSize,
+				"human_readable": humanReadableSize(file.FileSize),
+			},
+		},
+		"metadata": map[string]interface{}{
+			"mode": fileInfo.Mode().String(),
+			"modification_time": fileInfo.ModTime().Format(time.RFC3339),
+			"esp_id": file.EspID,
+			"delivery_key": file.DeliveryKey,
+			"is_encrypted": true,
+		},
+		"content_analysis": map[string]interface{}{
+			"patterns_found": false,
+			"matches": make(map[string][]string),
+		},
 	}
 
 	// Read file content
@@ -197,6 +223,8 @@ func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interfa
 
 	// Scan for content patterns
 	contentMatches := make(map[string][]string)
+	patternsFound := false
+	
 	for patternName, patterns := range params.ContentPatterns {
 		matches := []string{}
 		for _, pattern := range patterns {
@@ -206,11 +234,27 @@ func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interfa
 		}
 		if len(matches) > 0 {
 			contentMatches[patternName] = matches
+			patternsFound = true
 		}
 	}
 
-	results["content_matches"] = contentMatches
-	results["scan_timestamp"] = time.Now().UTC()
+	results["content_analysis"].(map[string]interface{})["patterns_found"] = patternsFound
+	results["content_analysis"].(map[string]interface{})["matches"] = contentMatches
+	results["scan_timestamp"] = time.Now().UTC().Format(time.RFC3339)
 
 	return results, nil
-} 
+}
+
+// Add this helper function to convert bytes to human readable format
+func humanReadableSize(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
