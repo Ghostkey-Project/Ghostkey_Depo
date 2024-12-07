@@ -10,11 +10,22 @@ import (
 	"gorm.io/gorm"
 )
 
+// AnalysisParams holds the configuration for file analysis
+type AnalysisParams struct {
+	MaxFileSize         string              `json:"max_file_size"`
+	AllowedExtensions   string              `json:"allowed_extensions"`
+	ScanTimeout         string              `json:"scan_timeout"`
+	ContentCheck        string              `json:"content_check"`
+	VirusScan          string              `json:"virus_scan"`
+	MetadataExtraction string              `json:"metadata_extraction"`
+	ContentPatterns     map[string][]string `json:"content_patterns"`
+}
+
 // Config holds the server configuration
 type Config struct {
-	ServerPort     string            `json:"server_port"`
-	StoragePath    string            `json:"storage_path"`
-	AnalysisParams map[string]string `json:"analysis_params"`
+	ServerPort     string         `json:"server_port"`
+	StoragePath    string         `json:"storage_path"`
+	AnalysisParams AnalysisParams `json:"analysis_params"`
 }
 
 var (

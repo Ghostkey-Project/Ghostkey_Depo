@@ -7,6 +7,11 @@
         "scan_timeout": "300",
         "content_check": "true",
         "virus_scan": "true",
-        "metadata_extraction": "true"
+        "metadata_extraction": "true",
+        "content_patterns": {
+            "sensitive_credentials": ["password", "pass", "pwd", "creds", "credentials"],
+            "api_keys": ["api_key", "apikey", "api-key", "token"],
+            "personal_info": ["ssn", "social security", "credit card", "passport"]
+        }
     }
 } 

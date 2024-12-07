@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -176,14 +178,39 @@ func analyzeFile(file StoredFile) {
 }
 
 // performAnalysis implements the actual file analysis logic based on parameters
-func performAnalysis(file StoredFile, params map[string]string) (map[string]interface{}, error) {
-	// TODO: Implement your specific file analysis logic here
-	// This is a placeholder that returns basic file information
+func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interface{}, error) {
 	results := map[string]interface{}{
 		"file_name": file.FileName,
 		"file_size": file.FileSize,
 		"esp_id":    file.EspID,
+		"content_matches": make(map[string][]string),
 	}
+
+	// Read file content
+	content, err := os.ReadFile(file.FilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %v", err)
+	}
+
+	// Convert content to string for pattern matching
+	fileContent := strings.ToLower(string(content))
+
+	// Scan for content patterns
+	contentMatches := make(map[string][]string)
+	for patternName, patterns := range params.ContentPatterns {
+		matches := []string{}
+		for _, pattern := range patterns {
+			if strings.Contains(fileContent, strings.ToLower(pattern)) {
+				matches = append(matches, pattern)
+			}
+		}
+		if len(matches) > 0 {
+			contentMatches[patternName] = matches
+		}
+	}
+
+	results["content_matches"] = contentMatches
+	results["scan_timestamp"] = time.Now().UTC()
 
 	return results, nil
 } 
