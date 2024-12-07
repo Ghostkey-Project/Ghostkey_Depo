@@ -1,3 +1,7 @@
+> [!warning] 
+> **Warning** these is only a proof of concept.
+>
+> The project is still in development and is not ready for real use. The project is not responsible for any damage caused by the use of this tool. Use it at your own risk.
 # Storage Server
 
 This server works in conjunction with the main Ghostkey server to store and analyze files collected from mailers.
@@ -84,3 +88,12 @@ The `config.json` file contains:
 - StartTime (time.Time)
 - EndTime (time.Time)
 - Error (string) 
+
+# Collaboration
+If you want to collaborate with the project or make your own version of the Ghostkey, feel free to do so. I only ask that you share with me your version of the project so I can learn from it and find ways to improve the Ghostkey.
+
+The project is open source and is under the [GPL-3.0 license](https://github.com/raf181/Ghostkey/blob/main/LICENSE), and I have no intention of changing that. Since it has the following conditions:
+
+| Permissions                                                                                | Limitations               | Conditions                                                                                   |
+| ------------------------------------------------------------------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------- |
+| Commercial use ✔️<br>Modification ✔️<br>Distribution ✔️<br>Patent use ✔️<br>Private use ✔️ | Liability ❌<br>Warranty ❌ | License and copyright notice ℹ️<br>State changes ℹ️<br>Disclose source ℹ️<br>Same license ℹ️ |
