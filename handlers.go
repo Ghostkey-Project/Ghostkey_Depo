@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -179,14 +180,40 @@ func analyzeFile(file StoredFile) {
 
 // performAnalysis implements the actual file analysis logic based on parameters
 func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interface{}, error) {
-	// Get file info for metadata
-	fileInfo, err := os.Stat(file.FilePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get file info: %v", err)
-	}
+	// Get file info for basic metadata
+	// check fileInfo, err := os.Stat(file.FilePath)
+	// check if err != nil {
+	// check 	return nil, fmt.Errorf("failed to get file info: %v", err)
+	// check }
 
 	// Get file extension
 	fileExt := strings.ToLower(filepath.Ext(file.FileName))
+
+	// Run exiftool to get metadata
+	cmd := exec.Command("exiftool", "-json", file.FilePath)
+	output, err := cmd.Output()
+	
+	var metadata []map[string]interface{}
+	if err != nil {
+		log.Printf("Warning: exiftool failed: %v", err)
+		metadata = []map[string]interface{}{
+			{
+				"Error": "Failed to extract metadata: " + err.Error(),
+			},
+		}
+	} else {
+		if err := json.Unmarshal(output, &metadata); err != nil {
+			return nil, fmt.Errorf("failed to parse exiftool output: %v", err)
+		}
+	}
+
+	// Initialize metadata map
+	var metadataMap map[string]interface{}
+	if len(metadata) > 0 {
+		metadataMap = metadata[0]
+	} else {
+		metadataMap = map[string]interface{}{}
+	}
 
 	// Create structured results
 	results := map[string]interface{}{
@@ -199,9 +226,8 @@ func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interfa
 				"human_readable": humanReadableSize(file.FileSize),
 			},
 		},
-		"metadata": map[string]interface{}{
-			"mode": fileInfo.Mode().String(),
-			"modification_time": fileInfo.ModTime().Format(time.RFC3339),
+		"metadata": metadataMap,
+		"esp_info": map[string]interface{}{
 			"esp_id": file.EspID,
 			"delivery_key": file.DeliveryKey,
 			"is_encrypted": true,

@@ -9,9 +9,55 @@
         "virus_scan": "true",
         "metadata_extraction": "true",
         "content_patterns": {
-            "sensitive_credentials": ["password", "pass", "pwd", "creds", "credentials"],
+            "sensitive_credentials": [
+    "password", "pass", "pwd", "pw", "pword", "creds", "credentials", "cred", 
+    "auth", "authentication", "key", "api_key", "api_k", "akey", "secret", 
+    "sec", "token", "tok", "tkn", "access_token", "access_tok", "refresh_token", 
+    "ref_tok", "auth_token", "auth_tok", "login", "log", "username", "user", 
+    "uname", "usr", "userid", "user_id", "uid", "pin", "passcode", "pcode", 
+    "otp", "2fa", "two_factor", "security_code", "sec_code", "scode", "ssn", 
+    "social_security", "ss", "social_sec", "bank_account", "bank_acct", "acct", 
+    "account_number", "acct_num", "iban", "swift", "swift_code", "credit_card", 
+    "cc", "ccn", "credit_card_num", "cvv", "cvc", "pin_code", "pincode", 
+    "keypair", "keyp", "private_key", "priv_key", "pkey", "pem", "pfx", 
+    "master_key", "mkey", "root_key", "rkey", "ssh_key", "tls_key", 
+    "tls_k", "encryption_key", "enc_key", "signing_key", "sign_key", 
+    "access_key", "acc_key", "authorization", "authz", "auth_code", "a_code", 
+
+    "contraseña", "contra", "clave", "usuario", "user", "identidad", "id", 
+    "secreto", "autenticación", "clave_api", "clave_secreta", 
+
+    "mot_de_passe", "mdp", "identifiant", "id", "nom_utilisateur", "utilisateur", 
+    "authentification", "clé", "secret", "passe", 
+
+    "schlüssel", "passwort", "benutzername", "benutzer", "auth", "benutzer_id", 
+    "id", "pass", "geheimnis", "auth_code", 
+
+    "parola", "sifre", "şifre", "kullanıcı_adı", "kul_adi", "şifre_kodu", 
+    "şifrelenmiş", "gizli", "kod", 
+
+    "senha", "usuario", "id_usuario", "chave", "autenticacao", "chave_secreta", 
+    "cod", 
+  
+    "пароль", "логин", "лог", "идентификатор", "ид", "секрет", "ключ", 
+    "токен", "авторизация", "код", 
+
+    "密码", "密碼", "用户", "用户名", "用户ID", "密钥", "秘密", 
+    "授权码", "授权", "令牌", 
+
+    "パスワード", "pw", "ユーザー", "ユーザー名", "ユーザーID", "秘密", 
+    "キー", "認証", "トークン", 
+
+    "비밀번호", "아이디", "사용자", "사용자명", "인증", "키", "암호", 
+    "토큰", 
+
+    "acct_id", "acct_num", "ssec", "privk", "pubk", "key_id", "keyfile", 
+    "priv_key_file", "pkey_file", "api_tok", "auth_tok_file", "passwd", 
+    "user_pass", "passw", "passwd_hash", "pass_hash", "psk", "pre_shared_key"
+],
             "api_keys": ["api_key", "apikey", "api-key", "token"],
-            "personal_info": ["ssn", "social security", "credit card", "passport"]
+            "personal_info": ["ssn", "social security", "credit card", "passport"],
+            "email_addresses": ["email", "emailaddress", "emailaddress@", "@*.com", "@*.net", "@*.org", "@*.edu", "@*.gov", "@*.mil", "@*.biz", "@*.info", "@*.name", "@*.co", "@*.io", "@*.me", "@*.us", "@*.ca", "@*.uk", "@*.de", "@*.fr", "@*.es", "@*.it", "@*.nl", "@*.se", "@*.no", "@*.dk", "@*.fi", "@*.is", "@*.pt", "@*.br", "@*.mx", "@*.ar", "@*.cl", "@*.co.uk", "@*.com.au", "@*.com.br", "@*.com.mx", "@*.com.pt", "@*.com.es", "@*.com.de", "@*.com.fr", "@*.com.it", "@*.com.nl", "@*.com.se", "@*.com.no", "@*.com.dk", "@*.com.fi", "@*.com.is", "@*.com.pt", "@*.com.br", "@*.com.mx", "@*.com.ar", "@*.com.cl"]
         }
     }
 } 

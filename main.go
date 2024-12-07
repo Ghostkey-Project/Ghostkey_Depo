@@ -12,13 +12,13 @@ import (
 
 // AnalysisParams holds the configuration for file analysis
 type AnalysisParams struct {
-	MaxFileSize         string              `json:"max_file_size"`
-	AllowedExtensions   string              `json:"allowed_extensions"`
-	ScanTimeout         string              `json:"scan_timeout"`
-	ContentCheck        string              `json:"content_check"`
+	MaxFileSize        string              `json:"max_file_size"`
+	AllowedExtensions  string              `json:"allowed_extensions"`
+	ScanTimeout        string              `json:"scan_timeout"`
+	ContentCheck       string              `json:"content_check"`
 	VirusScan          string              `json:"virus_scan"`
 	MetadataExtraction string              `json:"metadata_extraction"`
-	ContentPatterns     map[string][]string `json:"content_patterns"`
+	ContentPatterns    map[string][]string `json:"content_patterns"`
 }
 
 // Config holds the server configuration
@@ -80,4 +80,4 @@ func setupRoutes(r *gin.Engine) {
 	r.POST("/upload_file", handleFileUpload)
 	r.GET("/analysis/:file_id", getAnalysisResult)
 	r.GET("/files", listFiles)
-} 
+}

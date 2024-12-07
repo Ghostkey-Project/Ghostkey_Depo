@@ -22,12 +22,12 @@ type StoredFile struct {
 // AnalysisResult stores the results of file analysis
 type AnalysisResult struct {
 	gorm.Model
-	FileID      uint              `gorm:"not null"`
-	StoredFile  StoredFile        `gorm:"foreignKey:FileID"`
-	Parameters  string            `gorm:"type:json"` // JSON string of parameters used
-	Results     string            `gorm:"type:json"` // JSON string of analysis results
-	Status      string            `gorm:"not null"`  // "pending", "completed", "failed"
-	StartTime   time.Time         `gorm:"not null"`
-	EndTime     *time.Time
-	Error       *string
-} 
+	FileID     uint       `gorm:"not null"`
+	StoredFile StoredFile `gorm:"foreignKey:FileID"`
+	Parameters string     `gorm:"type:json"` // JSON string of parameters used
+	Results    string     `gorm:"type:json"` // JSON string of analysis results
+	Status     string     `gorm:"not null"`  // "pending", "completed", "failed"
+	StartTime  time.Time  `gorm:"not null"`
+	EndTime    *time.Time
+	Error      *string
+}
