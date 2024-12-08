@@ -21,10 +21,22 @@ type AnalysisParams struct {
 	ContentPatterns    map[string][]string `json:"content_patterns"`
 }
 
+// WorkerConfig holds worker pool configuration
+type WorkerConfig struct {
+	MaxConcurrentAnalysis int           `json:"max_concurrent_analysis"`
+	AnalysisQueueSize     int           `json:"analysis_queue_size"`
+	WorkerTimeout         string        `json:"worker_timeout"`
+	RetryAttempts        int           `json:"retry_attempts"`
+	RetryDelay           string        `json:"retry_delay"`
+	MaxFileSizeMB        int64         `json:"max_file_size_mb"`
+	AnalysisTimeout      string        `json:"analysis_timeout"`
+}
+
 // Config holds the server configuration
 type Config struct {
 	ServerPort     string         `json:"server_port"`
 	StoragePath    string         `json:"storage_path"`
+	WorkerPool     WorkerConfig   `json:"worker_pool"`
 	AnalysisParams AnalysisParams `json:"analysis_params"`
 }
 
@@ -55,6 +67,9 @@ func main() {
 	if err := os.MkdirAll(config.StoragePath, 0755); err != nil {
 		log.Fatalf("Failed to create storage directory: %v", err)
 	}
+
+	// Initialize worker pool before starting the server
+	initializeWorkers()
 
 	// Initialize router
 	r := gin.Default()

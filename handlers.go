@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,64 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+var analysisQueue chan StoredFile
+
+// Modify initializeWorkers to use config values
+func initializeWorkers() {
+	analysisQueue = make(chan StoredFile, config.WorkerPool.AnalysisQueueSize)
+
+	for i := 0; i < config.WorkerPool.MaxConcurrentAnalysis; i++ {
+		go analysisWorker()
+	}
+}
+
+// Worker function that processes files from the queue
+func analysisWorker() {
+	// Convert timeout string to duration
+	timeout, err := time.ParseDuration(config.WorkerPool.WorkerTimeout)
+	if err != nil {
+		log.Printf("Invalid worker timeout: %v, using default of 5m", err)
+		timeout = 5 * time.Minute
+	}
+
+	for file := range analysisQueue {
+		// Create context with timeout
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		
+		// Create done channel for the analysis
+		done := make(chan bool)
+		
+		// Start analysis in goroutine
+		go func() {
+			analyzeFile(file)
+			done <- true
+		}()
+
+		// Wait for either completion or timeout
+		select {
+		case <-done:
+			// Analysis completed successfully
+		case <-ctx.Done():
+			// Analysis timed out
+			log.Printf("Analysis of file %s (ID: %d) timed out", file.FileName, file.ID)
+			// Update analysis record with timeout error
+			updateAnalysisTimeout(file)
+		}
+
+		cancel() // Clean up context
+	}
+}
+
+func updateAnalysisTimeout(file StoredFile) {
+	var analysis AnalysisResult
+	if err := db.Where("file_id = ?", file.ID).First(&analysis).Error; err == nil {
+		errStr := "Analysis timed out"
+		analysis.Status = "failed"
+		analysis.Error = &errStr
+		db.Save(&analysis)
+	}
+}
 
 // handleFileUpload handles incoming file uploads from the main server
 func handleFileUpload(c *gin.Context) {
@@ -35,8 +94,23 @@ func handleFileUpload(c *gin.Context) {
 		return
 	}
 
-	// Create unique filename
-	filename := filepath.Join(config.StoragePath, header.Filename)
+	// Create directory for this delivery key if it doesn't exist
+	deliveryKeyPath := filepath.Join(config.StoragePath, deliveryKey)
+	if err := os.MkdirAll(deliveryKeyPath, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create delivery directory"})
+		return
+	}
+
+	// Create unique filename within the delivery key directory
+	filename := filepath.Join(deliveryKeyPath, header.Filename)
+
+	// If file already exists, append timestamp to make it unique
+	if _, err := os.Stat(filename); err == nil {
+		ext := filepath.Ext(header.Filename)
+		base := strings.TrimSuffix(header.Filename, ext)
+		timestamp := time.Now().Format("20060102150405")
+		filename = filepath.Join(deliveryKeyPath, fmt.Sprintf("%s_%s%s", base, timestamp, ext))
+	}
 
 	// Create the file
 	out, err := os.Create(filename)
@@ -75,12 +149,23 @@ func handleFileUpload(c *gin.Context) {
 		return
 	}
 
-	// Start analysis in a goroutine
-	go analyzeFile(storedFile)
+	// Instead of:
+	// go analyzeFile(storedFile)
+	
+	// Use:
+	select {
+	case analysisQueue <- storedFile:
+		// File queued successfully
+	default:
+		// Queue is full, log warning but don't block upload
+		log.Printf("Warning: Analysis queue is full. File %s (ID: %d) will be analyzed later", 
+			storedFile.FileName, storedFile.ID)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "File uploaded successfully",
 		"file_id": storedFile.ID,
+		"queued_for_analysis": true,
 	})
 }
 
@@ -89,18 +174,38 @@ func getAnalysisResult(c *gin.Context) {
 	fileID := c.Param("file_id")
 
 	var result AnalysisResult
-	if err := db.Where("file_id = ?", fileID).First(&result).Error; err != nil {
+	// Include the StoredFile in the query using Preload
+	if err := db.Preload("StoredFile").Where("file_id = ?", fileID).First(&result).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Analysis result not found"})
 		return
 	}
 
+	// Parse the JSON strings into maps for each category
+	var basicInfo, espInfo, metadata, analysis map[string]interface{}
+	if result.BasicInfo != "" {
+		json.Unmarshal([]byte(result.BasicInfo), &basicInfo)
+	}
+	if result.EspInfo != "" {
+		json.Unmarshal([]byte(result.EspInfo), &espInfo)
+	}
+	if result.Metadata != "" {
+		json.Unmarshal([]byte(result.Metadata), &metadata)
+	}
+	if result.Analysis != "" {
+		json.Unmarshal([]byte(result.Analysis), &analysis)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"status":     result.Status,
-		"parameters": result.Parameters,
-		"results":    result.Results,
-		"start_time": result.StartTime,
-		"end_time":   result.EndTime,
-		"error":      result.Error,
+		"filename":         result.FileName,
+		"status":           result.Status,
+		"parameters":       result.Parameters,
+		"basic_info":       basicInfo,
+		"esp_info":         espInfo,
+		"metadata":         metadata,
+		"content_analysis": analysis,
+		"start_time":       result.StartTime,
+		"end_time":         result.EndTime,
+		"error":            result.Error,
 	})
 }
 
@@ -117,12 +222,11 @@ func listFiles(c *gin.Context) {
 
 // analyzeFile performs the analysis of a stored file based on configuration parameters
 func analyzeFile(file StoredFile) {
-	// Create analysis record
 	analysis := AnalysisResult{
-		FileID:     file.ID,
-		Parameters: "",
-		Status:     "pending",
-		StartTime:  time.Now(),
+		FileID:    file.ID,
+		FileName:  file.FileName,
+		Status:    "pending",
+		StartTime: time.Now(),
 	}
 
 	// Convert analysis parameters to JSON string
@@ -131,9 +235,7 @@ func analyzeFile(file StoredFile) {
 		errStr := err.Error()
 		analysis.Status = "failed"
 		analysis.Error = &errStr
-		if err := db.Create(&analysis).Error; err != nil {
-			log.Printf("Failed to create analysis record: %v", err)
-		}
+		db.Create(&analysis)
 		return
 	}
 	analysis.Parameters = string(paramsJSON)
@@ -144,7 +246,7 @@ func analyzeFile(file StoredFile) {
 		return
 	}
 
-	// Perform the actual file analysis
+	// Perform the analysis
 	results, err := performAnalysis(file, config.AnalysisParams)
 	now := time.Now()
 	analysis.EndTime = &now
@@ -155,13 +257,19 @@ func analyzeFile(file StoredFile) {
 		analysis.Error = &errStr
 	} else {
 		analysis.Status = "completed"
-		resultsJSON, err := json.Marshal(results)
-		if err != nil {
-			errStr := "Failed to marshal results: " + err.Error()
-			analysis.Status = "failed"
-			analysis.Error = &errStr
-		} else {
-			analysis.Results = string(resultsJSON)
+		
+		// Marshal each section separately
+		if basicInfoJSON, err := json.Marshal(results["basic_info"]); err == nil {
+			analysis.BasicInfo = string(basicInfoJSON)
+		}
+		if espInfoJSON, err := json.Marshal(results["esp_info"]); err == nil {
+			analysis.EspInfo = string(espInfoJSON)
+		}
+		if metadataJSON, err := json.Marshal(results["metadata"]); err == nil {
+			analysis.Metadata = string(metadataJSON)
+		}
+		if analysisJSON, err := json.Marshal(results["content_analysis"]); err == nil {
+			analysis.Analysis = string(analysisJSON)
 		}
 	}
 
@@ -215,39 +323,35 @@ func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interfa
 		metadataMap = map[string]interface{}{}
 	}
 
-	// Create structured results
-	results := map[string]interface{}{
-		"basic_info": map[string]interface{}{
-			"name": file.FileName,
-			"collection_date": file.UploadTime.Format(time.RFC3339),
-			"file_type": fileExt,
-			"size": map[string]interface{}{
-				"bytes": file.FileSize,
-				"human_readable": humanReadableSize(file.FileSize),
-			},
-		},
-		"metadata": metadataMap,
-		"esp_info": map[string]interface{}{
-			"esp_id": file.EspID,
-			"delivery_key": file.DeliveryKey,
-			"is_encrypted": true,
-		},
-		"content_analysis": map[string]interface{}{
-			"patterns_found": false,
-			"matches": make(map[string][]string),
+	// Create structured results in separate categories
+	basicInfo := map[string]interface{}{
+		"name":            file.FileName,
+		"collection_date": file.UploadTime.Format(time.RFC3339),
+		"file_type":       fileExt,
+		"size": map[string]interface{}{
+			"bytes":          file.FileSize,
+			"human_readable": humanReadableSize(file.FileSize),
 		},
 	}
 
-	// Read file content
+	espInfo := map[string]interface{}{
+		"esp_id":       file.EspID,
+		"delivery_key": file.DeliveryKey,
+		"is_encrypted": true,
+	}
+
+	contentAnalysis := map[string]interface{}{
+		"patterns_found": false,
+		"matches":       make(map[string][]string),
+	}
+
+	// Read file content and perform pattern matching
 	content, err := os.ReadFile(file.FilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %v", err)
 	}
 
-	// Convert content to string for pattern matching
 	fileContent := strings.ToLower(string(content))
-
-	// Scan for content patterns
 	contentMatches := make(map[string][]string)
 	patternsFound := false
 	
@@ -264,9 +368,17 @@ func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interfa
 		}
 	}
 
-	results["content_analysis"].(map[string]interface{})["patterns_found"] = patternsFound
-	results["content_analysis"].(map[string]interface{})["matches"] = contentMatches
-	results["scan_timestamp"] = time.Now().UTC().Format(time.RFC3339)
+	contentAnalysis["patterns_found"] = patternsFound
+	contentAnalysis["matches"] = contentMatches
+
+	// Combine all results
+	results := map[string]interface{}{
+		"basic_info":       basicInfo,
+		"esp_info":         espInfo,
+		"metadata":         metadataMap,
+		"content_analysis": contentAnalysis,
+		"scan_timestamp":   time.Now().UTC().Format(time.RFC3339),
+	}
 
 	return results, nil
 }

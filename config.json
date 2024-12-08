@@ -1,6 +1,15 @@
 {
     "server_port": "6000",
     "storage_path": "./storage",
+    "worker_pool": {
+        "max_concurrent_analysis": 10,
+        "analysis_queue_size": 1000,
+        "worker_timeout": "5m",
+        "retry_attempts": 3,
+        "retry_delay": "30s",
+        "max_file_size_mb": 100,
+        "analysis_timeout": "10m"
+    },
     "analysis_params": {
         "max_file_size": "100MB",
         "allowed_extensions": ".txt,.pdf,.doc,.docx",

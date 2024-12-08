@@ -23,10 +23,14 @@ type StoredFile struct {
 type AnalysisResult struct {
 	gorm.Model
 	FileID     uint       `gorm:"not null"`
+	FileName   string     `gorm:"not null"`
 	StoredFile StoredFile `gorm:"foreignKey:FileID"`
-	Parameters string     `gorm:"type:json"` // JSON string of parameters used
-	Results    string     `gorm:"type:json"` // JSON string of analysis results
-	Status     string     `gorm:"not null"`  // "pending", "completed", "failed"
+	Parameters string     `gorm:"type:json"`      // JSON string of parameters used
+	BasicInfo  string     `gorm:"type:json"`      // Basic file information
+	EspInfo    string     `gorm:"type:json"`      // ESP-related information
+	Metadata   string     `gorm:"type:json"`      // File metadata from exiftool
+	Analysis   string     `gorm:"type:json"`      // Content analysis results
+	Status     string     `gorm:"not null"`       // "pending", "completed", "failed"
 	StartTime  time.Time  `gorm:"not null"`
 	EndTime    *time.Time
 	Error      *string
