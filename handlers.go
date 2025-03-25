@@ -157,23 +157,22 @@ func handleFileUpload(c *gin.Context) {
 		return
 	}
 
-	// Instead of:
-	// go analyzeFile(storedFile)
-
-	// Use:
+	// Queue file for analysis if possible
+	var queuedForAnalysis bool
 	select {
 	case analysisQueue <- storedFile:
-		// File queued successfully
+		queuedForAnalysis = true
 	default:
-		// Queue is full, log warning but don't block upload
+		queuedForAnalysis = false
 		log.Printf("Warning: Analysis queue is full. File %s (ID: %d) will be analyzed later",
 			storedFile.FileName, storedFile.ID)
 	}
 
+	// Always return the file ID in the response
 	c.JSON(http.StatusOK, gin.H{
 		"message":             "File uploaded successfully",
 		"file_id":             storedFile.ID,
-		"queued_for_analysis": true,
+		"queued_for_analysis": queuedForAnalysis,
 	})
 }
 
