@@ -27,6 +27,14 @@ func initializeWorkers() {
 	}
 }
 
+// healthCheck responds with the server status
+func healthCheck(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"status": "healthy",
+		"time":   time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
 // Worker function that processes files from the queue
 func analysisWorker() {
 	// Convert timeout string to duration
@@ -39,10 +47,10 @@ func analysisWorker() {
 	for file := range analysisQueue {
 		// Create context with timeout
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		
+
 		// Create done channel for the analysis
 		done := make(chan bool)
-		
+
 		// Start analysis in goroutine
 		go func() {
 			analyzeFile(file)
@@ -151,20 +159,20 @@ func handleFileUpload(c *gin.Context) {
 
 	// Instead of:
 	// go analyzeFile(storedFile)
-	
+
 	// Use:
 	select {
 	case analysisQueue <- storedFile:
 		// File queued successfully
 	default:
 		// Queue is full, log warning but don't block upload
-		log.Printf("Warning: Analysis queue is full. File %s (ID: %d) will be analyzed later", 
+		log.Printf("Warning: Analysis queue is full. File %s (ID: %d) will be analyzed later",
 			storedFile.FileName, storedFile.ID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "File uploaded successfully",
-		"file_id": storedFile.ID,
+		"message":             "File uploaded successfully",
+		"file_id":             storedFile.ID,
 		"queued_for_analysis": true,
 	})
 }
@@ -257,7 +265,7 @@ func analyzeFile(file StoredFile) {
 		analysis.Error = &errStr
 	} else {
 		analysis.Status = "completed"
-		
+
 		// Marshal each section separately
 		if basicInfoJSON, err := json.Marshal(results["basic_info"]); err == nil {
 			analysis.BasicInfo = string(basicInfoJSON)
@@ -300,7 +308,7 @@ func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interfa
 	// Run exiftool to get metadata
 	cmd := exec.Command("exiftool", "-json", file.FilePath)
 	output, err := cmd.Output()
-	
+
 	var metadata []map[string]interface{}
 	if err != nil {
 		log.Printf("Warning: exiftool failed: %v", err)
@@ -342,7 +350,7 @@ func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interfa
 
 	contentAnalysis := map[string]interface{}{
 		"patterns_found": false,
-		"matches":       make(map[string][]string),
+		"matches":        make(map[string][]string),
 	}
 
 	// Read file content and perform pattern matching
@@ -354,7 +362,7 @@ func performAnalysis(file StoredFile, params AnalysisParams) (map[string]interfa
 	fileContent := strings.ToLower(string(content))
 	contentMatches := make(map[string][]string)
 	patternsFound := false
-	
+
 	for patternName, patterns := range params.ContentPatterns {
 		matches := []string{}
 		for _, pattern := range patterns {

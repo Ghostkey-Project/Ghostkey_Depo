@@ -23,13 +23,13 @@ type AnalysisParams struct {
 
 // WorkerConfig holds worker pool configuration
 type WorkerConfig struct {
-	MaxConcurrentAnalysis int           `json:"max_concurrent_analysis"`
-	AnalysisQueueSize     int           `json:"analysis_queue_size"`
-	WorkerTimeout         string        `json:"worker_timeout"`
-	RetryAttempts        int           `json:"retry_attempts"`
-	RetryDelay           string        `json:"retry_delay"`
-	MaxFileSizeMB        int64         `json:"max_file_size_mb"`
-	AnalysisTimeout      string        `json:"analysis_timeout"`
+	MaxConcurrentAnalysis int    `json:"max_concurrent_analysis"`
+	AnalysisQueueSize     int    `json:"analysis_queue_size"`
+	WorkerTimeout         string `json:"worker_timeout"`
+	RetryAttempts         int    `json:"retry_attempts"`
+	RetryDelay            string `json:"retry_delay"`
+	MaxFileSizeMB         int64  `json:"max_file_size_mb"`
+	AnalysisTimeout       string `json:"analysis_timeout"`
 }
 
 // Config holds the server configuration
@@ -92,6 +92,8 @@ func loadConfig() error {
 }
 
 func setupRoutes(r *gin.Engine) {
+	r.GET("/health", healthCheck)
+	r.HEAD("/health", healthCheck) // Add support for HEAD requests
 	r.POST("/upload_file", handleFileUpload)
 	r.GET("/analysis/:file_id", getAnalysisResult)
 	r.GET("/files", listFiles)
